@@ -1,20 +1,21 @@
-# Mosher Labs .github - Project Memory
+# Discr .github - Project Memory
 
 This file contains persistent context for Claude Code sessions on this project.
 It will be automatically loaded at the start of every session.
 
 ## Project Overview
 
-This repository contains reusable GitHub Actions workflows for Mosher Labs projects.
+This repository contains reusable GitHub Actions workflows for Discr projects.
 It provides centralized CI/CD workflows that are consumed by other repositories
 via `workflow_call`.
 
 **Key Details:**
 
 - **Purpose:** Shared GitHub Actions workflows
-- **Consumers:** All Mosher Labs repositories
-- **Workflows:** Release, Terraform, Heimdallr (notifications)
+- **Consumers:** All Discr repositories (mobile, api, docs)
+- **Workflows:** Release, Pre-commit, Stale, Heimdallr (notifications)
 - **Pattern:** Reusable workflows with `workflow_call`
+- **Forked from:** Mosher-Labs/.github (sync manually as needed)
 
 ## Repository Structure
 
@@ -46,13 +47,16 @@ Handles semantic versioning and release creation using Conventional Commits.
 ```yaml
 jobs:
   release:
-    uses: "Mosher-Labs/.github/.github/workflows/release.yml@v0.10.3"
+    uses: "appdiscr/.github/.github/workflows/release.yml@main"
+    secrets: inherit
     permissions:
       contents: write
+      issues: write
+      pull-requests: write
 ```
 
-**Note:** Always pin to a specific version tag (e.g., `@v0.10.3`) instead of `@main`
-for stability and predictability. See Versioning Strategy below.
+**Note:** Currently using `@main` for simplicity. Consider pinning to specific
+version tags in the future for stability.
 
 **On PRs:** Calculates next version, Heimdallr comments with version preview
 
@@ -175,7 +179,7 @@ If you modify `heimdallr.yml` and also update `release.yml` to use the new versi
 
    ```yaml
    heimdallr:
-     uses: Mosher-Labs/.github/.github/workflows/heimdallr.yml@fix-heimdallr
+     uses: appdiscr/.github/.github/workflows/heimdallr.yml@fix-heimdallr
    ```
 
 1. Commit and push
@@ -184,7 +188,7 @@ If you modify `heimdallr.yml` and also update `release.yml` to use the new versi
 
    ```yaml
    heimdallr:
-     uses: Mosher-Labs/.github/.github/workflows/heimdallr.yml@main
+     uses: appdiscr/.github/.github/workflows/heimdallr.yml@main
    ```
 
 1. Commit the change back to `@main` reference
@@ -232,15 +236,11 @@ pre-commit autoupdate           # Update hook versions
 
 ## Consuming Repositories
 
-The following repos use these shared workflows:
+The following Discr repos use these shared workflows:
 
-- ansible-node-setup
-- basic-repo-template
-- basic-ansible-template
-- helm-charts
-- basic-helm-charts-template
-- homelab-gitops
-- basic-terraform-infrastructure-template
+- **mobile** - React Native mobile app
+- **api** - Backend API services
+- **docs** - Documentation site
 
 ## Important Notes
 
