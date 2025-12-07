@@ -1,22 +1,23 @@
-# Discr
+# AceBack
 
-Welcome to **Discr**, a mobile-first application for discovering and sharing experiences.
+Welcome to **AceBack**, a mobile-first application for recovering lost disc
+golf discs.
 
-## 🎯 About
+## About
 
-Discr is built with modern technologies:
+AceBack is built with modern technologies:
 
 - **Mobile**: React Native with Expo
 - **Backend**: Supabase
 - **Infrastructure**: GitHub Actions CI/CD
 
-## 📦 Repositories
+## Repositories
 
 - **mobile** - React Native mobile application
 - **api** - Backend API and services
 - **docs** - Documentation and guides
 - **.github** - Shared workflows and org configuration
 
-## 🚀 Getting Started
+## Getting Started
 
 Check out individual repositories for setup instructions and contribution guidelines.
