@@ -106,7 +106,8 @@ jobs:
           # Format diff with emoji
           format_diff() {
             local diff=$1
-            local is_positive=$(echo "$diff >= 0" | bc -l)
+            local is_positive
+            is_positive=$(echo "$diff >= 0" | bc -l)
             if [ "$is_positive" = "1" ]; then
               echo "+${diff}% 📈"
             else
