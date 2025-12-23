@@ -345,6 +345,31 @@ Configuration: `.markdownlint.yaml` (allows 2-space indent, 120 char lines)
 - **Don't forget to update consuming repos** - Version pins mean manual updates
 - **Don't skip release notes** - Consumers need to know what changed
 
+## Local Development - Analytics Blocking
+
+**IMPORTANT:** The home network Pi-hole blocks analytics domains to prevent
+skewing metrics with development traffic. If you're debugging issues with:
+
+- **Sentry errors not appearing** - Pi-hole blocks `o4510563703193600.ingest.us.sentry.io`
+- **Cloudflare Analytics not tracking** - Pi-hole blocks `cloudflareinsights.com`
+- **Segment events not sending** - Pi-hole blocks `api.segment.io`
+
+**To test analytics locally:**
+
+1. Temporarily disable Pi-hole blocking (Pi-hole admin → Disable → 5 minutes)
+2. Or use mobile data / a network without Pi-hole
+3. Or add the domains to Pi-hole's whitelist temporarily
+
+**Configuration location:** `Mosher-Labs/homelab-gitops` → `apps/pihole/application.yaml`
+
+**Blocked domains:**
+
+- `o4510563703193600.ingest.us.sentry.io` (Sentry)
+- `static.cloudflareinsights.com` (Cloudflare Analytics)
+- `cloudflareinsights.com` (Cloudflare Analytics)
+- `api.segment.io` (Segment)
+- `cdn.segment.com` (Segment)
+
 ## References
 
 - @README.md - Repository overview
@@ -353,7 +378,7 @@ Configuration: `.markdownlint.yaml` (allows 2-space indent, 120 char lines)
 
 ---
 
-**Last Updated:** 2025-11-18
+**Last Updated:** 2025-12-23
 
 This file should be updated whenever:
 
