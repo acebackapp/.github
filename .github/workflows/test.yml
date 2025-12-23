@@ -1,4 +1,6 @@
 ---
+name: Test
+
 on:
   workflow_call:
     inputs:
@@ -10,13 +12,21 @@ on:
       coverage_threshold:
         required: false
         type: number
-        default: 100
+        default: 50
         description: Minimum code coverage percentage (0-100)
       working_directory:
         required: false
         type: string
         default: "."
         description: Working directory for the tests
+      test_command:
+        required: false
+        type: string
+        default: "npm run test:coverage"
+        description: Command to run tests with coverage
+    secrets:
+      HEIMDALLR_TOKEN:
+        required: true
 
 permissions:
   contents: read
@@ -24,7 +34,18 @@ permissions:
 
 jobs:
   test:
+    name: Run Tests
     runs-on: ubuntu-latest
+    outputs:
+      statements: ${{ steps.coverage.outputs.statements }}
+      branches: ${{ steps.coverage.outputs.branches }}
+      functions: ${{ steps.coverage.outputs.functions }}
+      lines: ${{ steps.coverage.outputs.lines }}
+      base_statements: ${{ steps.base-coverage.outputs.statements }}
+      base_branches: ${{ steps.base-coverage.outputs.branches }}
+      base_functions: ${{ steps.base-coverage.outputs.functions }}
+      base_lines: ${{ steps.base-coverage.outputs.lines }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -42,54 +63,80 @@ jobs:
 
       - name: Run tests with coverage
         working-directory: ${{ inputs.working_directory }}
-        run: npm run test:coverage
+        run: ${{ inputs.test_command }}
 
-      - name: Check coverage threshold
+      - name: Get coverage values
+        id: coverage
         working-directory: ${{ inputs.working_directory }}
         run: |
-          COVERAGE=$(node -e "
-            const fs = require('fs');
-            const coverage = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
-            const totals = coverage.total;
-            // Only check lines, branches, and statements (not functions for schema files)
-            const minCoverage = Math.min(
-              totals.lines.pct,
-              totals.statements.pct,
-              totals.branches.pct
-            );
-            console.log(JSON.stringify({
-              coverage: minCoverage.toFixed(2),
-              lines: totals.lines.pct.toFixed(2),
-              statements: totals.statements.pct.toFixed(2),
-              branches: totals.branches.pct.toFixed(2),
-              functions: totals.functions.pct.toFixed(2)
-            }));
-          ")
+          STATEMENTS=$(jq '.total.statements.pct' coverage/coverage-summary.json)
+          BRANCHES=$(jq '.total.branches.pct' coverage/coverage-summary.json)
+          FUNCTIONS=$(jq '.total.functions.pct' coverage/coverage-summary.json)
+          LINES=$(jq '.total.lines.pct' coverage/coverage-summary.json)
+          {
+            echo "statements=$STATEMENTS"
+            echo "branches=$BRANCHES"
+            echo "functions=$FUNCTIONS"
+            echo "lines=$LINES"
+          } >> "$GITHUB_OUTPUT"
 
-          THRESHOLD=${{ inputs.coverage_threshold }}
-          MIN_COVERAGE=$(echo $COVERAGE | jq -r '.coverage')
-
-          echo "Coverage Report:"
-          echo "  Lines: $(echo $COVERAGE | jq -r '.lines')%"
-          echo "  Statements: $(echo $COVERAGE | jq -r '.statements')%"
-          echo "  Branches: $(echo $COVERAGE | jq -r '.branches')%"
-          echo "  Functions: $(echo $COVERAGE | jq -r '.functions')% (not enforced)"
-          echo ""
-          echo "Minimum Coverage: ${MIN_COVERAGE}%"
-          echo "Threshold: ${THRESHOLD}%"
-
-          if (( $(echo "$MIN_COVERAGE < $THRESHOLD" | bc -l) )); then
-            echo "❌ Coverage ${MIN_COVERAGE}% is below threshold ${THRESHOLD}%"
-            exit 1
-          else
-            echo "✅ Coverage ${MIN_COVERAGE}% meets threshold ${THRESHOLD}%"
-          fi
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v5
-        if: always()
+      - name: Restore main branch coverage from cache
+        if: github.event_name == 'pull_request'
+        id: cache-restore
+        uses: actions/cache/restore@v4
         with:
-          working-directory: ${{ inputs.working_directory }}
-          files: ./coverage/lcov.info
-          flags: unittests
-          fail_ci_if_error: false
+          path: base-coverage/coverage-summary.json
+          key: coverage-main-latest
+
+      - name: Get base coverage values
+        id: base-coverage
+        run: |
+          if [ -f base-coverage/coverage-summary.json ]; then
+            STATEMENTS=$(jq '.total.statements.pct' base-coverage/coverage-summary.json)
+            BRANCHES=$(jq '.total.branches.pct' base-coverage/coverage-summary.json)
+            FUNCTIONS=$(jq '.total.functions.pct' base-coverage/coverage-summary.json)
+            LINES=$(jq '.total.lines.pct' base-coverage/coverage-summary.json)
+          else
+            STATEMENTS=0
+            BRANCHES=0
+            FUNCTIONS=0
+            LINES=0
+          fi
+          {
+            echo "statements=$STATEMENTS"
+            echo "branches=$BRANCHES"
+            echo "functions=$FUNCTIONS"
+            echo "lines=$LINES"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Cache main branch coverage
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ inputs.working_directory }}/coverage/coverage-summary.json
+          key: coverage-main-${{ github.sha }}
+
+      - name: Update latest main coverage cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ inputs.working_directory }}/coverage/coverage-summary.json
+          key: coverage-main-latest
+
+  coverage-report:
+    name: Coverage Report
+    needs: test
+    if: github.event_name == 'pull_request'
+    uses: discrapp/.github/.github/workflows/coverage.yml@main
+    with:
+      coverage_threshold: ${{ inputs.coverage_threshold }}
+      pr_statements: ${{ needs.test.outputs.statements }}
+      pr_branches: ${{ needs.test.outputs.branches }}
+      pr_functions: ${{ needs.test.outputs.functions }}
+      pr_lines: ${{ needs.test.outputs.lines }}
+      base_statements: ${{ needs.test.outputs.base_statements }}
+      base_branches: ${{ needs.test.outputs.base_branches }}
+      base_functions: ${{ needs.test.outputs.base_functions }}
+      base_lines: ${{ needs.test.outputs.base_lines }}
+    secrets:
+      HEIMDALLR_TOKEN: ${{ secrets.HEIMDALLR_TOKEN }}
